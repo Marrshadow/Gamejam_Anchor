@@ -5,12 +5,15 @@ public class PatrolEnemy2D : MonoBehaviour, IAnchorFreezable
 {
     [SerializeField] private Transform leftLimit;
     [SerializeField] private Transform rightLimit;
-    [SerializeField] private float patrolHalfWidth = 3f;
-    [SerializeField] private float speed = 2f;
+    [SerializeField] private float speed = 4f;
+    [SerializeField] private bool startsMovingRight = true;
+
+    private const float DefaultPatrolHalfWidth = 10f;
 
     private Rigidbody2D body;
-    private float leftX;
-    private float rightX;
+    private Vector2 startPoint;
+    private Vector2 endPoint;
+    private Vector2 targetPoint;
     private int direction = 1;
     private bool frozen;
     private Vector2 frozenVelocity;
@@ -20,7 +23,8 @@ public class PatrolEnemy2D : MonoBehaviour, IAnchorFreezable
         leftLimit = left;
         rightLimit = right;
         speed = patrolSpeed;
-        CacheBounds();
+        CachePatrolPointsFromStartTransform();
+        ApplyInitialDirection();
     }
 
     private void Awake()
@@ -28,7 +32,8 @@ public class PatrolEnemy2D : MonoBehaviour, IAnchorFreezable
         body = GetComponent<Rigidbody2D>();
         body.bodyType = RigidbodyType2D.Kinematic;
         body.freezeRotation = true;
-        CacheBounds();
+        CachePatrolPointsFromStartTransform();
+        ApplyInitialDirection();
     }
 
     private void FixedUpdate()
@@ -39,22 +44,16 @@ public class PatrolEnemy2D : MonoBehaviour, IAnchorFreezable
             return;
         }
 
-        CacheBounds();
-        Vector2 next = body.position + Vector2.right * direction * speed * Time.fixedDeltaTime;
-
-        if (next.x >= rightX)
-        {
-            next.x = rightX;
-            direction = -1;
-        }
-        else if (next.x <= leftX)
-        {
-            next.x = leftX;
-            direction = 1;
-        }
+        Vector2 next = Vector2.MoveTowards(body.position, targetPoint, speed * Time.fixedDeltaTime);
 
         body.MovePosition(next);
-        transform.localScale = new Vector3(Mathf.Abs(transform.localScale.x) * direction, transform.localScale.y, transform.localScale.z);
+        if (Vector2.Distance(next, targetPoint) <= 0.01f)
+        {
+            direction *= -1;
+            targetPoint = direction > 0 ? endPoint : startPoint;
+        }
+
+        ApplyFacingDirection();
     }
 
     public void SetFrozen(bool freeze)
@@ -76,23 +75,44 @@ public class PatrolEnemy2D : MonoBehaviour, IAnchorFreezable
         }
     }
 
-    private void CacheBounds()
+    private void CachePatrolPointsFromStartTransform()
     {
         if (leftLimit != null && rightLimit != null)
         {
-            leftX = Mathf.Min(leftLimit.position.x, rightLimit.position.x);
-            rightX = Mathf.Max(leftLimit.position.x, rightLimit.position.x);
+            startPoint = leftLimit.position;
+            endPoint = rightLimit.position;
             return;
         }
 
-        leftX = transform.position.x - patrolHalfWidth;
-        rightX = transform.position.x + patrolHalfWidth;
+        Vector2 position = transform.position;
+        startPoint = position + Vector2.left * DefaultPatrolHalfWidth;
+        endPoint = position + Vector2.right * DefaultPatrolHalfWidth;
+    }
+
+    private void ApplyInitialDirection()
+    {
+        direction = startsMovingRight ? 1 : -1;
+        targetPoint = direction > 0 ? endPoint : startPoint;
+        ApplyFacingDirection();
+    }
+
+    private void ApplyFacingDirection()
+    {
+        Vector2 currentPosition = body != null ? body.position : (Vector2)transform.position;
+        float horizontalDirection = targetPoint.x - currentPosition.x;
+        if (Mathf.Abs(horizontalDirection) <= 0.01f)
+        {
+            return;
+        }
+
+        float facingSign = horizontalDirection > 0f ? -1f : 1f;
+        transform.localScale = new Vector3(Mathf.Abs(transform.localScale.x) * facingSign, transform.localScale.y, transform.localScale.z);
     }
 
     private void OnDrawGizmosSelected()
     {
-        CacheBounds();
+        CachePatrolPointsFromStartTransform();
         Gizmos.color = Color.red;
-        Gizmos.DrawLine(new Vector3(leftX, transform.position.y, 0f), new Vector3(rightX, transform.position.y, 0f));
+        Gizmos.DrawLine(startPoint, endPoint);
     }
 }

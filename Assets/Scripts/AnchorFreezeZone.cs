@@ -6,22 +6,30 @@ public class AnchorFreezeZone : MonoBehaviour
     [SerializeField] private float freezeRadius = 2.4f;
     [SerializeField] private LayerMask freezableMask = ~0;
     [SerializeField] private Transform ignoredRoot;
+    [SerializeField] private Vector3 circleCenterPosition;
 
     private readonly HashSet<IAnchorFreezable> frozenTargets = new HashSet<IAnchorFreezable>();
+    private float anchorRadius = 0.18f;
     private bool isActive;
 
-    public void Configure(float anchorRadius, float radius, Color color, LayerMask mask, Transform ignored)
+    public Vector3 CircleCenterPosition => circleCenterPosition;
+
+    private void OnValidate()
     {
+        if (!Application.isPlaying)
+        {
+            circleCenterPosition = transform.position;
+        }
+    }
+
+    public void Configure(float anchorRadius, float radius, LayerMask mask, Transform ignored)
+    {
+        this.anchorRadius = anchorRadius;
         freezeRadius = radius;
         freezableMask = mask;
         ignoredRoot = ignored;
-        transform.localScale = Vector3.one * anchorRadius * 2f;
-
-        SpriteRenderer renderer = GetComponent<SpriteRenderer>();
-        if (renderer != null)
-        {
-            renderer.color = color;
-        }
+        ApplyScale();
+        SetCenterPosition(transform.position);
 
         CircleCollider2D trigger = GetComponent<CircleCollider2D>();
         if (trigger != null)
@@ -36,6 +44,16 @@ public class AnchorFreezeZone : MonoBehaviour
         ignoredRoot = ignored;
     }
 
+    /// <summary> 
+    /// 更新圆心坐标和位置
+    /// </summary>
+    /// <param name="worldPosition"></param>
+    public void SetCenterPosition(Vector3 worldPosition)
+    {
+        circleCenterPosition = worldPosition;
+        transform.position = circleCenterPosition;
+    }
+
     public void SetActive(bool active)
     {
         if (isActive == active)
@@ -44,6 +62,7 @@ public class AnchorFreezeZone : MonoBehaviour
         }
 
         isActive = active;
+        ApplyScale();
         if (!isActive)
         {
             ReleaseAll();
@@ -57,7 +76,7 @@ public class AnchorFreezeZone : MonoBehaviour
             return;
         }
 
-        Collider2D[] hits = Physics2D.OverlapCircleAll(transform.position, freezeRadius, freezableMask);
+        Collider2D[] hits = Physics2D.OverlapCircleAll(circleCenterPosition, freezeRadius, freezableMask);
         HashSet<IAnchorFreezable> currentTargets = new HashSet<IAnchorFreezable>();
 
         for (int i = 0; i < hits.Length; i++)
@@ -121,9 +140,16 @@ public class AnchorFreezeZone : MonoBehaviour
         frozenTargets.Clear();
     }
 
+    private void ApplyScale()
+    {
+        float radius = isActive ? freezeRadius : anchorRadius;
+        transform.localScale = Vector3.one * radius * 2f;
+    }
+
     private void OnDrawGizmos()
     {
         Gizmos.color = new Color(0.15f, 0.85f, 1f, 0.35f);
-        Gizmos.DrawWireSphere(transform.position, freezeRadius);
+        Vector3 center = Application.isPlaying ? circleCenterPosition : transform.position;
+        Gizmos.DrawWireSphere(center, freezeRadius);
     }
 }

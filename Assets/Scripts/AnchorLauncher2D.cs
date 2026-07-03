@@ -8,11 +8,15 @@ public class AnchorLauncher2D : MonoBehaviour
     [SerializeField] private float anchorRadius = 0.18f;
     [SerializeField] private float freezeRadius = 2.4f;
     [SerializeField] private LayerMask freezableMask = ~0;
-    [SerializeField] private Color anchorColor = new Color(0.15f, 0.85f, 1f, 1f);
 
     private Vector3 targetPosition;
+    private Vector2 mouseBoundScreenPosition;
     private bool isFlying;
     private bool isAnchored;
+    // 是否绑定鼠标
+    private bool isMouseBound = true;
+
+    public bool IsMouseBound => isMouseBound;
 
     private void Awake()
     {
@@ -21,14 +25,20 @@ public class AnchorLauncher2D : MonoBehaviour
             return;
         }
 
-        anchor.Configure(anchorRadius, freezeRadius, anchorColor, freezableMask, transform);
-        ResetAnchorToOwner();
+        anchor.Configure(anchorRadius, freezeRadius, freezableMask, transform);
+        // ResetAnchorToOwner();
     }
 
     private void Update()
     {
         if (anchor == null)
         {
+            return;
+        }
+
+        if (isMouseBound)
+        {
+            UpdateMouseBoundAnchor();
             return;
         }
 
@@ -40,7 +50,7 @@ public class AnchorLauncher2D : MonoBehaviour
 
         if (!isAnchored)
         {
-            anchor.transform.position = transform.position;
+            anchor.SetCenterPosition(transform.position);
         }
     }
 
@@ -69,13 +79,31 @@ public class AnchorLauncher2D : MonoBehaviour
             return;
         }
 
-        anchor.Configure(anchorRadius, freezeRadius, anchorColor, freezableMask, transform);
+        anchor.Configure(anchorRadius, freezeRadius, freezableMask, transform);
         anchor.gameObject.SetActive(true);
         anchor.SetActive(false);
-        anchor.transform.position = transform.position;
+        anchor.SetCenterPosition(transform.position);
         targetPosition = worldPosition;
+        isMouseBound = false;
         isFlying = true;
         isAnchored = false;
+    }
+
+    public void BindAnchorToMouse(Vector2 screenPosition)
+    {
+        if (anchor == null || Camera.main == null)
+        {
+            return;
+        }
+
+        mouseBoundScreenPosition = screenPosition;
+        anchor.Configure(anchorRadius, freezeRadius, freezableMask, transform);
+        anchor.gameObject.SetActive(true);
+        anchor.SetActive(true);
+        isMouseBound = true;
+        isFlying = false;
+        isAnchored = false;
+        UpdateMouseBoundAnchor();
     }
 
     public void RetractAnchor()
@@ -90,28 +118,45 @@ public class AnchorLauncher2D : MonoBehaviour
 
     private void MoveAnchor()
     {
-        anchor.transform.position = Vector3.MoveTowards(
-            anchor.transform.position,
+        Vector3 nextPosition = Vector3.MoveTowards(
+            anchor.CircleCenterPosition,
             targetPosition,
             flightSpeed * Time.deltaTime);
 
-        if (Vector3.Distance(anchor.transform.position, targetPosition) > 0.01f)
+        anchor.SetCenterPosition(nextPosition);
+
+        if (Vector3.Distance(anchor.CircleCenterPosition, targetPosition) > 0.01f)
         {
             return;
         }
 
-        anchor.transform.position = targetPosition;
+        anchor.SetCenterPosition(targetPosition);
         anchor.SetActive(true);
         isFlying = false;
+        isMouseBound = false;
         isAnchored = true;
+    }
+
+    private void UpdateMouseBoundAnchor()
+    {
+        Camera mainCamera = Camera.main;
+        if (mainCamera == null)
+        {
+            return;
+        }
+
+        Vector3 mouseWorld = mainCamera.ScreenToWorldPoint(mouseBoundScreenPosition);
+        mouseWorld.z = 0f;
+        anchor.SetCenterPosition(mouseWorld);
     }
 
     private void ResetAnchorToOwner()
     {
         isFlying = false;
         isAnchored = false;
+        isMouseBound = false;
         anchor.SetActive(false);
-        anchor.transform.position = transform.position;
+        anchor.SetCenterPosition(transform.position);
         anchor.gameObject.SetActive(false);
     }
 }

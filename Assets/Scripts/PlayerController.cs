@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using SKCell;
 
 [RequireComponent(typeof(Rigidbody2D))]
 public class PlayerController : MonoBehaviour, PlayerInputControl.IGamePlayActions
@@ -98,6 +99,11 @@ public class PlayerController : MonoBehaviour, PlayerInputControl.IGamePlayActio
     public void OnMouse(InputAction.CallbackContext context)
     {
         pointerScreenPosition = context.ReadValue<Vector2>();
+
+        if (anchorLauncher != null && anchorLauncher.IsMouseBound)
+        {
+            anchorLauncher.BindAnchorToMouse(pointerScreenPosition);
+        }
     }
 
     public void OnLook(InputAction.CallbackContext context)
@@ -116,6 +122,10 @@ public class PlayerController : MonoBehaviour, PlayerInputControl.IGamePlayActio
     {
     }
 
+    /// <summary>
+    /// 将鼠标和锚点绑定
+    /// </summary>
+    /// <param name="context"></param>
     public void OnConfirm(InputAction.CallbackContext context)
     {
         if (!context.started || anchorLauncher == null)
@@ -123,7 +133,7 @@ public class PlayerController : MonoBehaviour, PlayerInputControl.IGamePlayActio
             return;
         }
 
-        anchorLauncher.LaunchToScreenPosition(pointerScreenPosition);
+        anchorLauncher.BindAnchorToMouse(pointerScreenPosition);
     }
 
     public void OnCancle(InputAction.CallbackContext context)
