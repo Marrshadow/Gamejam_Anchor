@@ -10,12 +10,12 @@ GameObject:
   m_Component:
   - component: {fileID: 1829008773603272666}
   - component: {fileID: 3301847260293268055}
+  - component: {fileID: 8648894201194110259}
+  - component: {fileID: 1996823651264111412}
   - component: {fileID: 5339535987796452830}
   - component: {fileID: 7190696353186457640}
   - component: {fileID: 4557885416754951616}
-  - component: {fileID: 8648894201194110259}
-  - component: {fileID: 1996823651264111412}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: BlackCat
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -31,7 +31,7 @@ Transform:
   m_GameObject: {fileID: 789474728871364779}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 27.01183, y: -0.5005299, z: 0}
+  m_LocalPosition: {x: 29.11, y: -0.34, z: 0}
   m_LocalScale: {x: 0.18688999, y: 0.18688999, z: 0.18688999}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -96,6 +96,54 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+--- !u!114 &8648894201194110259
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 789474728871364779}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ea012019f1de17f44af83733ef69c916, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SKCell.SKPathDesigner
+  translateMode: 1
+  normalizedTime: 0
+  speed: 1
+  bezierSegments: 8
+  onPointThreshold: 0.5
+  startOnAwake: 1
+  waypoints:
+  - localPosition: {x: 8, y: 0, z: 0}
+    rotation: {x: 0, y: 0, z: 0, w: 0}
+    type: 0
+    bezier:
+      p0: {x: -8, y: -0, z: -0}
+      p1: {x: 6, y: 0, z: 0}
+      p2: {x: 7, y: 0, z: 0}
+      p3: {x: 0, y: 0, z: 0}
+    curve:
+      curveType: 0
+      curveDir: 0
+    stayTime: 0
+  selfWaitTime: 0
+  curWaypoint: -1
+  nextWaypoint: -1
+--- !u!114 &1996823651264111412
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 789474728871364779}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b7203d6a72b3142c192a94480ec50a5f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyBehavior
+  spriteFacesRight: 0
+  turnThreshold: 0.001
 --- !u!95 &5339535987796452830
 Animator:
   serializedVersion: 7
@@ -126,7 +174,7 @@ Rigidbody2D:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 789474728871364779}
-  m_BodyType: 0
+  m_BodyType: 1
   m_Simulated: 1
   m_UseFullKinematicContacts: 0
   m_UseAutoMass: 0
@@ -191,63 +239,3 @@ BoxCollider2D:
   m_AutoTiling: 0
   m_Size: {x: 16.61, y: 17.356934}
   m_EdgeRadius: 0
---- !u!114 &8648894201194110259
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 789474728871364779}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ea012019f1de17f44af83733ef69c916, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SKCell.SKPathDesigner
-  translateMode: 1
-  normalizedTime: 0
-  speed: 1
-  bezierSegments: 8
-  onPointThreshold: 0.5
-  startOnAwake: 1
-  waypoints:
-  - localPosition: {x: -5, y: 0, z: 0}
-    rotation: {x: 0, y: 0, z: 0, w: 0}
-    type: 0
-    bezier:
-      p0: {x: 5, y: -0, z: -0}
-      p1: {x: 6, y: 0, z: 0}
-      p2: {x: 7, y: 0, z: 0}
-      p3: {x: 0, y: 0, z: 0}
-    curve:
-      curveType: 0
-      curveDir: 0
-    stayTime: 0
-  - localPosition: {x: 5, y: 0, z: 0}
-    rotation: {x: 0, y: 0, z: 0, w: 0}
-    type: 0
-    bezier:
-      p0: {x: -10, y: 0, z: 0}
-      p1: {x: 11, y: 0, z: 0}
-      p2: {x: 12, y: 0, z: 0}
-      p3: {x: 0, y: 0, z: 0}
-    curve:
-      curveType: 0
-      curveDir: 0
-    stayTime: 0
-  selfWaitTime: 0
-  curWaypoint: -1
-  nextWaypoint: -1
---- !u!114 &1996823651264111412
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 789474728871364779}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b7203d6a72b3142c192a94480ec50a5f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::EnemyBehavior
-  spriteFacesRight: 0
-  turnThreshold: 0.001
