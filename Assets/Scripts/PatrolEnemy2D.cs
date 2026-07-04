@@ -36,6 +36,21 @@ public class PatrolEnemy2D : MonoBehaviour, IAnchorFreezable
         ApplyInitialDirection();
     }
 
+    private void OnEnable()
+    {
+        AnchorFreezeZone.RegisterFreezable(this);
+    }
+
+    private void Start()
+    {
+        AnchorFreezeZone.RegisterFreezable(this);
+    }
+
+    private void OnDisable()
+    {
+        AnchorFreezeZone.UnregisterFreezable(this);
+    }
+
     private void FixedUpdate()
     {
         if (frozen)
