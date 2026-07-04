@@ -6,9 +6,6 @@ public class PlayerController : MonoBehaviour, PlayerInputControl.IGamePlayActio
 {
     [Header("Movement")]
     [SerializeField] private float moveSpeed = 7f;
-    [SerializeField] private float groundAcceleration = 70f;
-    [SerializeField] private float groundDeceleration = 85f;
-    [SerializeField] private float airAcceleration = 45f;
     [SerializeField] private float jumpForce = 13f;
     [SerializeField] private float coyoteTime = 0.08f;
     [SerializeField] private float jumpBufferTime = 0.1f;
@@ -35,6 +32,7 @@ public class PlayerController : MonoBehaviour, PlayerInputControl.IGamePlayActio
     private PlayerInputControl inputControl;
     private Rigidbody2D body;
     private Collider2D bodyCollider;
+    private Collider2D[] ownColliders;
     private Vector2 moveInput;
     private Vector2 pointerScreenPosition;
     private bool jumpQueued;
@@ -52,6 +50,7 @@ public class PlayerController : MonoBehaviour, PlayerInputControl.IGamePlayActio
         inputControl = new PlayerInputControl();
         body = GetComponent<Rigidbody2D>();
         bodyCollider = GetComponent<Collider2D>();
+        ownColliders = GetComponentsInChildren<Collider2D>();
         body.freezeRotation = true;
         body.interpolation = RigidbodyInterpolation2D.Interpolate;
         cachedGravityScale = body.gravityScale;
@@ -129,11 +128,13 @@ public class PlayerController : MonoBehaviour, PlayerInputControl.IGamePlayActio
             lastGroundedTime = Time.time;
         }
 
-        Vector2 platformVelocity = GetStandingPlatformVelocity();
-        Vector2 nextVelocity = CalculateHorizontalVelocity(platformVelocity, isGrounded);
+        Vector2 platformVelocity = Vector2.zero;
+        bool isOnMovingPlatform = TryGetStandingPlatformVelocity(out platformVelocity);
+        Vector2 nextVelocity = body.linearVelocity;
+        nextVelocity.x = moveInput.x * moveSpeed + platformVelocity.x;
         bool shouldJump = HasBufferedJump() && CanUseGroundJump(isGrounded);
 
-        if (!shouldJump && platformVelocity.y > nextVelocity.y)
+        if (!shouldJump && isOnMovingPlatform && platformVelocity.y > nextVelocity.y)
         {
             nextVelocity.y = platformVelocity.y;
         }
@@ -274,25 +275,6 @@ public class PlayerController : MonoBehaviour, PlayerInputControl.IGamePlayActio
         UpdateAnimation(0f, IsGrounded());
     }
 
-    private Vector2 CalculateHorizontalVelocity(Vector2 platformVelocity, bool isGrounded)
-    {
-        Vector2 velocity = body.linearVelocity;
-        float targetVelocityX = moveInput.x * moveSpeed + platformVelocity.x;
-        float acceleration = GetHorizontalAcceleration(isGrounded);
-        velocity.x = Mathf.MoveTowards(velocity.x, targetVelocityX, acceleration * Time.fixedDeltaTime);
-        return velocity;
-    }
-
-    private float GetHorizontalAcceleration(bool isGrounded)
-    {
-        if (!isGrounded)
-        {
-            return airAcceleration;
-        }
-
-        return Mathf.Abs(moveInput.x) > moveInputDeadZone ? groundAcceleration : groundDeceleration;
-    }
-
     private bool HasBufferedJump()
     {
         if (!jumpQueued)
@@ -341,25 +323,27 @@ public class PlayerController : MonoBehaviour, PlayerInputControl.IGamePlayActio
     private bool IsGrounded()
     {
         Vector2 checkPosition = GetGroundCheckPosition();
-
-        return Physics2D.OverlapCircle(checkPosition, groundCheckRadius, groundMask) != null;
-    }
-
-    private Vector2 GetStandingPlatformVelocity()
-    {
-        Vector2 checkPosition = GetGroundCheckPosition();
-
-        ContactFilter2D filter = new ContactFilter2D
-        {
-            useLayerMask = true,
-            layerMask = groundMask,
-            useTriggers = false
-        };
-
-        int hitCount = Physics2D.OverlapCircle(checkPosition, groundCheckRadius, filter, groundHits);
+        int hitCount = GetGroundHits(checkPosition);
         for (int i = 0; i < hitCount; i++)
         {
-            if (groundHits[i] == null)
+            if (IsValidGroundHit(groundHits[i]))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool TryGetStandingPlatformVelocity(out Vector2 platformVelocity)
+    {
+        platformVelocity = Vector2.zero;
+        Vector2 checkPosition = GetGroundCheckPosition();
+
+        int hitCount = GetGroundHits(checkPosition);
+        for (int i = 0; i < hitCount; i++)
+        {
+            if (!IsValidGroundHit(groundHits[i]))
             {
                 continue;
             }
@@ -367,11 +351,47 @@ public class PlayerController : MonoBehaviour, PlayerInputControl.IGamePlayActio
             MovingPlatform2D platform = groundHits[i].GetComponentInParent<MovingPlatform2D>();
             if (platform != null)
             {
-                return platform.Velocity;
+                platformVelocity = platform.Velocity;
+                return true;
             }
         }
 
-        return Vector2.zero;
+        return false;
+    }
+
+    private int GetGroundHits(Vector2 checkPosition)
+    {
+        ContactFilter2D filter = new ContactFilter2D
+        {
+            useLayerMask = true,
+            layerMask = groundMask,
+            useTriggers = false
+        };
+
+        return Physics2D.OverlapCircle(checkPosition, groundCheckRadius, filter, groundHits);
+    }
+
+    private bool IsValidGroundHit(Collider2D candidate)
+    {
+        return candidate != null && !candidate.isTrigger && !IsOwnCollider(candidate);
+    }
+
+    private bool IsOwnCollider(Collider2D candidate)
+    {
+        if (candidate == null || ownColliders == null)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < ownColliders.Length; i++)
+        {
+            if (ownColliders[i] == candidate)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private Vector2 GetGroundCheckPosition()

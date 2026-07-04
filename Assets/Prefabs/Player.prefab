@@ -42,7 +42,6 @@ GameObject:
   - component: {fileID: 1466118000556456150}
   - component: {fileID: 1596973020716177573}
   - component: {fileID: 2213104734976156559}
-  - component: {fileID: 3475149189728959956}
   - component: {fileID: 712650680061490156}
   m_Layer: 0
   m_Name: Player
@@ -153,52 +152,6 @@ Rigidbody2D:
   m_SleepingMode: 1
   m_CollisionDetection: 0
   m_Constraints: 0
---- !u!61 &3475149189728959956
-BoxCollider2D:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9199334699584089911}
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Density: 1
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_ForceSendLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_ForceReceiveLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_ContactCaptureLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_CallbackLayers:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  m_IsTrigger: 0
-  m_UsedByEffector: 0
-  m_CompositeOperation: 0
-  m_CompositeOrder: 0
-  m_Offset: {x: 0, y: 0}
-  m_SpriteTilingProperty:
-    border: {x: 0, y: 0, z: 0, w: 0}
-    pivot: {x: 0.5, y: 0.5}
-    oldSize: {x: 1, y: 1}
-    newSize: {x: 1, y: 1}
-    adaptiveTilingThreshold: 0.5
-    drawMode: 0
-    adaptiveTiling: 0
-  m_AutoTiling: 0
-  m_Size: {x: 1, y: 1}
-  m_EdgeRadius: 0
 --- !u!114 &712650680061490156
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -212,10 +165,22 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerController
   moveSpeed: 7
+  groundAcceleration: 70
+  groundDeceleration: 85
+  airAcceleration: 45
   jumpForce: 18
+  coyoteTime: 0.08
+  jumpBufferTime: 0.1
+  moveInputDeadZone: 0.01
   groundCheck: {fileID: 6950689870472437357}
   groundCheckRadius: 0.16
   groundMask:
     serializedVersion: 2
     m_Bits: 64
   anchor: {fileID: 0}
+  mouseRangeCircle: {fileID: 0}
+  animator: {fileID: 0}
+  speedParameter: Speed
+  groundedParameter: IsGround
+  spriteFacesRight: 0
+  startsFacingRight: 1
