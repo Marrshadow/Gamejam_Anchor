@@ -31,7 +31,7 @@ Transform:
   m_GameObject: {fileID: 789474728871364779}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 29.11, y: -0.34, z: 0}
+  m_LocalPosition: {x: 29.974, y: -0.34, z: 0}
   m_LocalScale: {x: 0.18688999, y: 0.18688999, z: 0.18688999}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -109,7 +109,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SKCell.SKPathDesigner
   translateMode: 1
-  normalizedTime: 0
+  normalizedTime: 0.10799996
   speed: 1
   bezierSegments: 8
   onPointThreshold: 0.5
@@ -129,7 +129,7 @@ MonoBehaviour:
     stayTime: 0
   selfWaitTime: 0
   curWaypoint: -1
-  nextWaypoint: -1
+  nextWaypoint: 0
 --- !u!114 &1996823651264111412
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -142,8 +142,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b7203d6a72b3142c192a94480ec50a5f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EnemyBehavior
+  moveSpeed: 2.2
+  startsMovingRight: 0
+  gravityScale: 3
+  groundLayer:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  ledgeCheckDistance: 0.7
+  minTurnInterval: 0.15
+  groundCheckOffset: {x: 0, y: -1.34}
   spriteFacesRight: 0
-  turnThreshold: 0.001
 --- !u!95 &5339535987796452830
 Animator:
   serializedVersion: 7

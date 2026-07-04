@@ -112,7 +112,8 @@ public class Fog : MonoBehaviour
         }
 
         return other.GetComponentInParent<EnemyBehaviour>() != null
-            || other.GetComponentInParent<PatrolEnemy2D>() != null;
+            || other.GetComponentInParent<PatrolEnemy2D>() != null
+            || other.GetComponentInParent<ChargingEnemy2D>() != null;
     }
 
     private void SetHidden(bool shouldHide)

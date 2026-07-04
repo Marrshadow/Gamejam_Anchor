@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.Tilemaps;
 
 public enum AnchorFreezeMode
 {
@@ -17,7 +16,6 @@ public class AnchorFreezeZone : MonoBehaviour
     [SerializeField] private MouseRangeCircle2D mouseRangeCircle;
     [SerializeField] private float flightSpeed = 18f;
     [SerializeField] private float anchorRadius = 0.18f;
-    [SerializeField] private LayerMask anchorCollisionMask = ~0;
 
     [Header("Freeze")]
     [SerializeField] private float freezeRadius = 2.4f;
@@ -36,6 +34,9 @@ public class AnchorFreezeZone : MonoBehaviour
     [Header("Startup Freeze")]
     [SerializeField] private bool enableStartupShrink = true;
     [SerializeField] private float startupShrinkDuration = 0.08f;
+
+    [Header("Startup Global Pulse")]
+    [SerializeField] private float startupGlobalPulseRadius = 120f;
 
     [Header("Click Residue")]
     [SerializeField] private bool enableClickResidue = true;
@@ -60,16 +61,20 @@ public class AnchorFreezeZone : MonoBehaviour
     private bool isActive;
     private bool configured;
     private bool startupShrinking;
+    private bool modeSwitchPulsing;
     private bool freezeModeStateInitialized;
     private bool mouseRangeRadiusInitialized;
     private float baseFreezeRadiusForMouseRange;
     private float baseMouseRangeRadius;
+    private float modeSwitchPulseElapsed;
+    private float modeSwitchPulseStartRadius;
+    private float modeSwitchPulseTargetRadius;
+    private float modeSwitchPulseCurrentDuration;
+    private bool modeSwitchPulseIsStartup;
     private AnchorFreezeMode appliedFreezeMode;
     private GameObject activeResidue;
     private Rigidbody2D anchorCenterBody;
     private Collider2D[] anchorCenterColliders;
-    private readonly RaycastHit2D[] anchorCastHits = new RaycastHit2D[16];
-    private const float AnchorCollisionSkin = 0.01f;
     private const float AnchorCenterSyncSqrTolerance = 0.000001f;
     private const string AnchorCentreName = "AnchorCentre";
     private const string AnchorCenterName = "AnchorCenter";
@@ -103,6 +108,7 @@ public class AnchorFreezeZone : MonoBehaviour
         mouseRangeGrowthPerFreezeUnit = Mathf.Max(0f, mouseRangeGrowthPerFreezeUnit);
         minMouseRangeRadius = Mathf.Max(0.01f, minMouseRangeRadius);
         startupShrinkDuration = Mathf.Max(0.001f, startupShrinkDuration);
+        startupGlobalPulseRadius = Mathf.Max(maxFreezeRadius, startupGlobalPulseRadius);
         residueFadeDuration = Mathf.Max(0.01f, residueFadeDuration);
 
         if (!Application.isPlaying)
@@ -275,6 +281,7 @@ public class AnchorFreezeZone : MonoBehaviour
         }
 
         HandleRadiusScroll();
+        UpdateModeSwitchPulse();
 
         RefreshAffectedTargets();
     }
@@ -334,6 +341,13 @@ public class AnchorFreezeZone : MonoBehaviour
         SetActive(false);
         SetCenterPosition(GetOwnerPosition());
         gameObject.SetActive(false);
+    }
+
+    public void ToggleFreezeMode()
+    {
+        FreezeMode = freezeMode == AnchorFreezeMode.FreezeInside
+            ? AnchorFreezeMode.MoveInside
+            : AnchorFreezeMode.FreezeInside;
     }
 
     private void UpdateAnchorMovement()
@@ -538,10 +552,10 @@ public class AnchorFreezeZone : MonoBehaviour
         if (anchorCenterBody != null && Application.isPlaying)
         {
             KeepAnchorCenterUpright();
-            Vector2 clampedPosition = GetClampedAnchorCenterPosition(worldPosition);
-            anchorCenterBody.MovePosition(clampedPosition);
-            anchorCenterBody.position = clampedPosition;
-            anchorCenter.position = clampedPosition;
+            Vector2 nextPosition = worldPosition;
+            anchorCenterBody.MovePosition(nextPosition);
+            anchorCenterBody.position = nextPosition;
+            anchorCenter.position = nextPosition;
             return;
         }
 
@@ -589,51 +603,6 @@ public class AnchorFreezeZone : MonoBehaviour
         {
             anchorCenter.rotation = Quaternion.identity;
         }
-    }
-
-    private Vector2 GetClampedAnchorCenterPosition(Vector3 requestedWorldPosition)
-    {
-        Vector2 currentPosition = anchorCenterBody.position;
-        Vector2 targetPosition = requestedWorldPosition;
-        Vector2 delta = targetPosition - currentPosition;
-        float distance = delta.magnitude;
-        if (distance <= 0.0001f)
-        {
-            return targetPosition;
-        }
-
-        Vector2 direction = delta / distance;
-        ContactFilter2D filter = new ContactFilter2D
-        {
-            useTriggers = false
-        };
-        filter.SetLayerMask(anchorCollisionMask);
-
-        CacheAnchorCenterColliders();
-        int hitCount = anchorCenterBody.Cast(direction, filter, anchorCastHits, distance);
-        float closestDistance = distance;
-        for (int i = 0; i < hitCount; i++)
-        {
-            Collider2D hitCollider = anchorCastHits[i].collider;
-            if (hitCollider == null || ShouldIgnoreAnchorCenterHit(hitCollider))
-            {
-                continue;
-            }
-
-            closestDistance = Mathf.Min(closestDistance, Mathf.Max(0f, anchorCastHits[i].distance - AnchorCollisionSkin));
-        }
-
-        return currentPosition + direction * closestDistance;
-    }
-
-    private bool ShouldIgnoreAnchorCenterHit(Collider2D hitCollider)
-    {
-        Transform hitTransform = hitCollider.transform;
-        return hitTransform == anchorCenter
-            || hitTransform.IsChildOf(anchorCenter)
-            || hitCollider.GetComponent<TilemapCollider2D>() == null
-            || IsOwnerOrPlayer(hitTransform)
-            || IsIgnored(hitTransform);
     }
 
     private void CacheAnchorCenterColliders()
@@ -684,8 +653,7 @@ public class AnchorFreezeZone : MonoBehaviour
                     continue;
                 }
 
-                bool shouldIgnore = otherCollider.GetComponent<TilemapCollider2D>() == null;
-                Physics2D.IgnoreCollision(anchorCollider, otherCollider, shouldIgnore);
+                Physics2D.IgnoreCollision(anchorCollider, otherCollider, true);
             }
         }
     }
@@ -741,7 +709,7 @@ public class AnchorFreezeZone : MonoBehaviour
 
     private void HandleRadiusScroll()
     {
-        if (startupShrinking || !allowScrollResize || Mouse.current == null)
+        if (startupShrinking || modeSwitchPulsing || !allowScrollResize || Mouse.current == null)
         {
             return;
         }
@@ -765,6 +733,58 @@ public class AnchorFreezeZone : MonoBehaviour
         ApplyGlobalFreezeMode(freezeMode);
     }
 
+    private void SetFreezeRadiusRaw(float radius)
+    {
+        freezeRadius = Mathf.Max(0.01f, radius);
+        ApplyScale();
+        RefreshAffectedTargets();
+        ApplyGlobalFreezeMode(freezeMode);
+    }
+
+    private void BeginRadiusPulse(float duration, bool isStartupPulse)
+    {
+        bool wasPulsing = modeSwitchPulsing;
+        gameObject.SetActive(true);
+        SetActiveForModeSwitch(true);
+        modeSwitchPulsing = true;
+        modeSwitchPulseIsStartup = modeSwitchPulseIsStartup || isStartupPulse;
+        modeSwitchPulseElapsed = 0f;
+        modeSwitchPulseCurrentDuration = Mathf.Max(0.001f, duration);
+        modeSwitchPulseStartRadius = Mathf.Max(startupGlobalPulseRadius, maxFreezeRadius);
+        modeSwitchPulseTargetRadius = wasPulsing
+            ? modeSwitchPulseTargetRadius
+            : Mathf.Clamp(freezeRadius, minFreezeRadius, maxFreezeRadius);
+        SetFreezeRadiusRaw(modeSwitchPulseStartRadius);
+    }
+
+    private void UpdateModeSwitchPulse()
+    {
+        if (!modeSwitchPulsing)
+        {
+            return;
+        }
+
+        modeSwitchPulseElapsed += Time.deltaTime;
+        float progress = Mathf.Clamp01(modeSwitchPulseElapsed / modeSwitchPulseCurrentDuration);
+        float easedProgress = 1f - (1f - progress) * (1f - progress);
+        SetFreezeRadiusRaw(Mathf.Lerp(modeSwitchPulseStartRadius, modeSwitchPulseTargetRadius, easedProgress));
+
+        if (progress < 1f)
+        {
+            return;
+        }
+
+        modeSwitchPulsing = false;
+        if (modeSwitchPulseIsStartup)
+        {
+            startupShrinking = false;
+        }
+
+        modeSwitchPulseIsStartup = false;
+        SetFreezeRadius(modeSwitchPulseTargetRadius);
+        ApplyMouseRangeRadiusForCurrentFreeze();
+    }
+
     private void BeginStartupShrink()
     {
         if (!enableStartupShrink || freezeMode != AnchorFreezeMode.FreezeInside)
@@ -778,10 +798,7 @@ public class AnchorFreezeZone : MonoBehaviour
         }
 
         startupShrinking = true;
-        SetActive(true);
-        AcquireStartupCameraFreeze();
-        CancelInvoke(nameof(ReleaseStartupCameraFreeze));
-        Invoke(nameof(ReleaseStartupCameraFreeze), startupShrinkDuration);
+        BeginRadiusPulse(startupShrinkDuration, true);
     }
 
     private void ApplyFreezeModeState()

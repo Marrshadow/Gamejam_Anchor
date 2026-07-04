@@ -4,6 +4,9 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody2D))]
 public class MovingPlatform2D : MonoBehaviour, IAnchorFreezable
 {
+    [Header("Movement")]
+    [SerializeField] private float endpointPauseDuration = 0.5f;
+
     private SKPathDesigner pathDesigner;
 
     private Rigidbody2D body;
@@ -16,6 +19,14 @@ public class MovingPlatform2D : MonoBehaviour, IAnchorFreezable
     {
         pathDesigner = GetComponent<SKPathDesigner>();
         body = GetComponent<Rigidbody2D>();
+        SyncEndpointPause();
+    }
+
+    private void OnValidate()
+    {
+        endpointPauseDuration = Mathf.Max(0f, endpointPauseDuration);
+        CacheComponents();
+        SyncEndpointPause();
     }
 
     public void Configure(Transform[] points, float moveSpeed)
@@ -29,6 +40,7 @@ public class MovingPlatform2D : MonoBehaviour, IAnchorFreezable
 
         pathDesigner.speed = moveSpeed;
         pathDesigner.waypoints.Clear();
+        pathDesigner.selfWaitTime = endpointPauseDuration;
 
         if (points == null)
         {
@@ -53,6 +65,7 @@ public class MovingPlatform2D : MonoBehaviour, IAnchorFreezable
             });
         }
 
+        SyncEndpointPause();
         pathDesigner.UpdateDistances();
         pathDesigner.UpdateBezier();
     }
@@ -61,6 +74,7 @@ public class MovingPlatform2D : MonoBehaviour, IAnchorFreezable
     {
         CacheComponents();
         ConfigureBody();
+        SyncEndpointPause();
         previousPosition = transform.position;
     }
 
@@ -85,6 +99,7 @@ public class MovingPlatform2D : MonoBehaviour, IAnchorFreezable
     private void Start()
     {
         AnchorFreezeZone.RegisterFreezable(this);
+        SyncEndpointPause();
         ApplyPathFrozenState();
     }
 
@@ -164,5 +179,21 @@ public class MovingPlatform2D : MonoBehaviour, IAnchorFreezable
 
         pathDesigner.enabled = true;
         pathDesigner.ResumePath();
+    }
+
+    private void SyncEndpointPause()
+    {
+        if (pathDesigner == null)
+        {
+            return;
+        }
+
+        pathDesigner.selfWaitTime = endpointPauseDuration;
+        for (int i = 0; i < pathDesigner.waypoints.Count; i++)
+        {
+            pathDesigner.waypoints[i].stayTime = i == pathDesigner.waypoints.Count - 1
+                ? endpointPauseDuration
+                : 0f;
+        }
     }
 }

@@ -11,11 +11,9 @@ public class EnemyBehaviour : MonoBehaviour, IAnchorFreezable
 
     [Header("Detection")]
     [SerializeField] private LayerMask groundLayer = ~0;
-    [SerializeField] private float wallCheckDistance = 0.2f;
     [SerializeField] private float ledgeCheckDistance = 0.7f;
     [SerializeField] private float minTurnInterval = 0.15f;
-    [SerializeField] private Vector2 wallCheckOffset = new Vector2(0.28f, 0.02f);
-    [SerializeField] private Vector2 ledgeCheckOffset = new Vector2(0.28f, -0.1f);
+    [SerializeField] private Vector2 groundCheckOffset = new Vector2(0f, -0.1f);
 
     private SKPathDesigner pathDesigner;
     private SpriteRenderer spriteRenderer;
@@ -188,59 +186,13 @@ public class EnemyBehaviour : MonoBehaviour, IAnchorFreezable
 
     private bool ShouldTurnAround()
     {
-        Vector2 position = body != null ? body.position : (Vector2)transform.position;
-        Vector2 wallOrigin = position + new Vector2(wallCheckOffset.x * moveDirection, wallCheckOffset.y);
-        Vector2 ledgeOrigin = position + new Vector2(ledgeCheckOffset.x * moveDirection, ledgeCheckOffset.y);
-
-        bool hasWallAhead = HasSolidWallAhead(wallOrigin);
-        bool hasGroundAhead = HasGroundAhead(ledgeOrigin);
-        return hasWallAhead || !hasGroundAhead;
-    }
-
-    private bool HasSolidWallAhead(Vector2 origin)
-    {
-        RaycastHit2D[] hits = Physics2D.RaycastAll(origin, Vector2.right * moveDirection, wallCheckDistance, groundLayer);
-        for (int i = 0; i < hits.Length; i++)
-        {
-            Collider2D hitCollider = hits[i].collider;
-            if (hitCollider == null || hitCollider.isTrigger || IsOwnCollider(hitCollider))
-            {
-                continue;
-            }
-
-            if (hitCollider.GetComponentInParent<Fog>() != null)
-            {
-                continue;
-            }
-
-            return true;
-        }
-
-        return false;
-    }
-
-    private bool HasGroundAhead(Vector2 origin)
-    {
-        RaycastHit2D[] hits = Physics2D.RaycastAll(origin, Vector2.down, ledgeCheckDistance, groundLayer);
-        for (int i = 0; i < hits.Length; i++)
-        {
-            Collider2D hitCollider = hits[i].collider;
-            if (hitCollider == null || hitCollider.isTrigger || IsOwnCollider(hitCollider))
-            {
-                continue;
-            }
-
-            return true;
-        }
-
-        return false;
+        return !HasGroundBelowBodyCenter();
     }
 
     private bool TryGetStandingPlatformVelocity(out Vector2 platformVelocity)
     {
         platformVelocity = Vector2.zero;
-        Vector2 position = body != null ? body.position : (Vector2)transform.position;
-        Vector2 probeOrigin = position + new Vector2(0f, ledgeCheckOffset.y);
+        Vector2 probeOrigin = GetGroundCheckOrigin();
         RaycastHit2D[] hits = Physics2D.RaycastAll(probeOrigin, Vector2.down, ledgeCheckDistance, groundLayer);
         for (int i = 0; i < hits.Length; i++)
         {
@@ -259,6 +211,30 @@ public class EnemyBehaviour : MonoBehaviour, IAnchorFreezable
         }
 
         return false;
+    }
+
+    private bool HasGroundBelowBodyCenter()
+    {
+        Vector2 probeOrigin = GetGroundCheckOrigin();
+        RaycastHit2D[] hits = Physics2D.RaycastAll(probeOrigin, Vector2.down, ledgeCheckDistance, groundLayer);
+        for (int i = 0; i < hits.Length; i++)
+        {
+            Collider2D hitCollider = hits[i].collider;
+            if (hitCollider == null || hitCollider.isTrigger || IsOwnCollider(hitCollider))
+            {
+                continue;
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private Vector2 GetGroundCheckOrigin()
+    {
+        Vector2 position = body != null ? body.position : (Vector2)transform.position;
+        return position + groundCheckOffset;
     }
 
     private void OnCollisionEnter2D(Collision2D collision)
@@ -307,13 +283,10 @@ public class EnemyBehaviour : MonoBehaviour, IAnchorFreezable
 
     private void OnDrawGizmosSelected()
     {
-        int direction = Application.isPlaying ? moveDirection : (startsMovingRight ? 1 : -1);
-        Vector2 position = Application.isPlaying && body != null ? body.position : (Vector2)transform.position;
-        Vector2 wallOrigin = position + new Vector2(wallCheckOffset.x * direction, wallCheckOffset.y);
-        Vector2 ledgeOrigin = position + new Vector2(ledgeCheckOffset.x * direction, ledgeCheckOffset.y);
+        Vector2 ledgeOrigin = Application.isPlaying && body != null
+            ? GetGroundCheckOrigin()
+            : (Vector2)transform.position + groundCheckOffset;
 
-        Gizmos.color = Color.red;
-        Gizmos.DrawLine(wallOrigin, wallOrigin + Vector2.right * direction * wallCheckDistance);
         Gizmos.color = Color.yellow;
         Gizmos.DrawLine(ledgeOrigin, ledgeOrigin + Vector2.down * ledgeCheckDistance);
     }

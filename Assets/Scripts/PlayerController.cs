@@ -19,6 +19,7 @@ public class PlayerController : MonoBehaviour, PlayerInputControl.IGamePlayActio
     [Header("Actions")]
     [SerializeField] private AnchorFreezeZone anchor;
     [SerializeField] private MouseRangeCircle2D mouseRangeCircle;
+    [SerializeField] private bool anchorModeSwitchUnlocked;
 
     [Header("Animation")]
     [SerializeField] private Animator animator;
@@ -230,13 +231,17 @@ public class PlayerController : MonoBehaviour, PlayerInputControl.IGamePlayActio
 
     public void OnCancle(InputAction.CallbackContext context)
     {
-        // 点击逻辑已移到 AnchorFreezeZone，避免 PlayerController 和 Zone 同时响应鼠标点击。
-        // if (!context.started || anchor == null)
-        // {
-        //     return;
-        // }
-        //
-        // anchor.RetractAnchor();
+        if (!context.started || !anchorModeSwitchUnlocked || anchor == null)
+        {
+            return;
+        }
+
+        anchor.ToggleFreezeMode();
+    }
+
+    public void UnlockAnchorModeSwitch()
+    {
+        anchorModeSwitchUnlocked = true;
     }
 
     public void SetFrozen(bool freeze)

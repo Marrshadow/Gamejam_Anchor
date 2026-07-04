@@ -74,6 +74,12 @@ public class RespawnTrap2D : MonoBehaviour
         return true;
     }
 
+    public static void SetDefaultRespawnPosition(Vector3 position)
+    {
+        defaultRespawnPosition = position;
+        hasDefaultRespawnPosition = true;
+    }
+
     private void CacheCollider()
     {
         if (trapCollider == null)
@@ -102,8 +108,10 @@ public class RespawnTrap2D : MonoBehaviour
 
         initialPlayerPosition = player.transform.position;
         hasInitialPlayerPosition = true;
-        defaultRespawnPosition = initialPlayerPosition;
-        hasDefaultRespawnPosition = true;
+        if (!hasDefaultRespawnPosition)
+        {
+            SetDefaultRespawnPosition(initialPlayerPosition);
+        }
     }
 
     private static void EnsureDefaultRespawnPosition()

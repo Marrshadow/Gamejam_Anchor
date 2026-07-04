@@ -7,7 +7,7 @@ public class BlinkingPlatform2D : MonoBehaviour, IAnchorFreezable
     [SerializeField] private bool startsVisible = true;
 
     private SpriteRenderer spriteRenderer;
-    private Collider2D platformCollider;
+    private Collider2D[] platformColliders;
     private float timer;
     private bool visible;
     private bool frozen;
@@ -23,9 +23,24 @@ public class BlinkingPlatform2D : MonoBehaviour, IAnchorFreezable
     private void Awake()
     {
         spriteRenderer = GetComponent<SpriteRenderer>();
-        platformCollider = GetComponent<Collider2D>();
+        platformColliders = GetComponents<Collider2D>();
         visible = startsVisible;
         ApplyState(visible);
+    }
+
+    private void OnEnable()
+    {
+        AnchorFreezeZone.RegisterFreezable(this);
+    }
+
+    private void Start()
+    {
+        AnchorFreezeZone.RegisterFreezable(this);
+    }
+
+    private void OnDisable()
+    {
+        AnchorFreezeZone.UnregisterFreezable(this);
     }
 
     private void Update()
@@ -60,9 +75,19 @@ public class BlinkingPlatform2D : MonoBehaviour, IAnchorFreezable
             spriteRenderer.enabled = visible;
         }
 
-        if (platformCollider != null)
+        if (platformColliders == null)
         {
-            platformCollider.enabled = visible;
+            return;
+        }
+
+        for (int i = 0; i < platformColliders.Length; i++)
+        {
+            if (platformColliders[i] == null || platformColliders[i].isTrigger)
+            {
+                continue;
+            }
+
+            platformColliders[i].enabled = visible;
         }
     }
 }
