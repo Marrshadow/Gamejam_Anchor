@@ -1,56 +1,96 @@
+using SKCell;
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody2D))]
 public class MovingPlatform2D : MonoBehaviour, IAnchorFreezable
 {
-    [SerializeField] private Transform[] waypoints;
-    [SerializeField] private float speed = 2f;
-    [SerializeField] private float waitTime = 0.25f;
+    private SKPathDesigner pathDesigner;
 
     private Rigidbody2D body;
-    private int targetIndex = 1;
-    private float waitTimer;
     private bool frozen;
-    private Vector2 frozenVelocity;
+    private Vector3 previousPosition;
+
+    public Vector2 Velocity { get; private set; }
+
+    private void Reset()
+    {
+        pathDesigner = GetComponent<SKPathDesigner>();
+        body = GetComponent<Rigidbody2D>();
+    }
 
     public void Configure(Transform[] points, float moveSpeed)
     {
-        waypoints = points;
-        speed = moveSpeed;
-        targetIndex = points != null && points.Length > 1 ? 1 : 0;
+        CacheComponents();
+
+        if (pathDesigner == null)
+        {
+            return;
+        }
+
+        pathDesigner.speed = moveSpeed;
+        pathDesigner.waypoints.Clear();
+
+        if (points == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < points.Length; i++)
+        {
+            if (points[i] == null)
+            {
+                continue;
+            }
+
+            pathDesigner.waypoints.Add(new SKTranslatorWaypoint
+            {
+                localPosition = points[i].position - transform.position,
+                rotation = Quaternion.identity,
+                type = SKTranslatorWaypointType.Line,
+                bezier = new SKBezier(),
+                curve = SKCurve.LinearIn,
+                stayTime = 0f
+            });
+        }
+
+        pathDesigner.UpdateDistances();
+        pathDesigner.UpdateBezier();
     }
 
     private void Awake()
     {
-        body = GetComponent<Rigidbody2D>();
-        body.bodyType = RigidbodyType2D.Kinematic;
-        body.interpolation = RigidbodyInterpolation2D.Interpolate;
+        CacheComponents();
+        ConfigureBody();
+        previousPosition = transform.position;
     }
 
-    private void FixedUpdate()
+    private void LateUpdate()
     {
-        if (frozen || waypoints == null || waypoints.Length < 2)
+        if (frozen || Time.deltaTime <= 0f)
         {
-            body.linearVelocity = Vector2.zero;
+            Velocity = Vector2.zero;
+            previousPosition = transform.position;
             return;
         }
 
-        if (waitTimer > 0f)
-        {
-            waitTimer -= Time.fixedDeltaTime;
-            body.linearVelocity = Vector2.zero;
-            return;
-        }
+        Velocity = ((Vector2)(transform.position - previousPosition)) / Time.deltaTime;
+        previousPosition = transform.position;
+    }
 
-        Vector2 target = waypoints[targetIndex].position;
-        Vector2 next = Vector2.MoveTowards(body.position, target, speed * Time.fixedDeltaTime);
-        body.MovePosition(next);
+    private void OnEnable()
+    {
+        AnchorFreezeZone.RegisterFreezable(this);
+    }
 
-        if (Vector2.Distance(next, target) <= 0.01f)
-        {
-            targetIndex = (targetIndex + 1) % waypoints.Length;
-            waitTimer = waitTime;
-        }
+    private void Start()
+    {
+        AnchorFreezeZone.RegisterFreezable(this);
+        ApplyPathFrozenState();
+    }
+
+    private void OnDisable()
+    {
+        AnchorFreezeZone.UnregisterFreezable(this);
     }
 
     public void SetFrozen(bool freeze)
@@ -61,14 +101,68 @@ public class MovingPlatform2D : MonoBehaviour, IAnchorFreezable
         }
 
         frozen = freeze;
+        CacheComponents();
+        ConfigureBody();
+
+        if (pathDesigner != null)
+        {
+            ApplyPathFrozenState();
+        }
+
+        if (body != null)
+        {
+            body.linearVelocity = Vector2.zero;
+            body.angularVelocity = 0f;
+        }
+
         if (freeze)
         {
-            frozenVelocity = body.linearVelocity;
-            body.linearVelocity = Vector2.zero;
+            Velocity = Vector2.zero;
+            previousPosition = transform.position;
         }
-        else
+    }
+
+    private void CacheComponents()
+    {
+        if (pathDesigner == null)
         {
-            body.linearVelocity = frozenVelocity;
+            pathDesigner = GetComponent<SKPathDesigner>();
         }
+
+        if (body == null)
+        {
+            body = GetComponent<Rigidbody2D>();
+        }
+    }
+
+    private void ConfigureBody()
+    {
+        if (body == null)
+        {
+            return;
+        }
+
+        body.bodyType = RigidbodyType2D.Kinematic;
+        body.gravityScale = 0f;
+        body.freezeRotation = true;
+        body.interpolation = RigidbodyInterpolation2D.Interpolate;
+    }
+
+    private void ApplyPathFrozenState()
+    {
+        if (pathDesigner == null)
+        {
+            return;
+        }
+
+        if (frozen)
+        {
+            pathDesigner.PausePath();
+            pathDesigner.enabled = false;
+            return;
+        }
+
+        pathDesigner.enabled = true;
+        pathDesigner.ResumePath();
     }
 }
